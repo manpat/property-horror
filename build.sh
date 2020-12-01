@@ -6,8 +6,9 @@ src_dir="src"
 build_dir="output"
 
 flags="-std=c++17 -Wall -Wextra -pedantic "
-# flags+="-fmodules -fimplicit-modules -fimplicit-module-maps "
-# flags+="-fprebuilt-module-path=$build_dir "
+flags+="$(pkg-config --cflags fmt)"
+
+link_libs="$(pkg-config --libs --static fmt)"
 
 object_files=""
 
@@ -15,7 +16,7 @@ function compiler {
 	clang++ $flags -xc++ $*
 }
 function link {
-	clang++ $*
+	clang++ $* $link_libs
 }
 
 function compile_source {
