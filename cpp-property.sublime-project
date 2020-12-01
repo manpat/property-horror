@@ -1,0 +1,27 @@
+{
+	"build_systems":
+	[
+		{
+			"cmd": ["./build.sh", "build"],
+			"name": "Build",
+			"working_dir": "$project_path",
+
+			"variants": [
+				{
+					"name": "Run",
+					"cmd": ["./build.sh", "run"]
+				},
+				{
+					"name": "Build and Run",
+					"cmd": ["./build.sh", "build-run"]
+				}
+			]
+		}
+	],
+	"folders":
+	[
+		{
+			"path": "."
+		}
+	]
+}
