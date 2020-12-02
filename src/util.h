@@ -4,6 +4,8 @@
 #include <type_traits>
 #include <cstdint>
 #include <string>
+#include <utility>
+#include <string_view>
 
 
 template<class...>
@@ -45,4 +47,18 @@ struct fmt::formatter<T> {
 		return fmt::format_to(ctx.out(), format_debug(t));
 	}
 };
+
+
+
+template<class Pattern>
+std::pair<std::string_view, std::string_view> split(std::string_view s, Pattern pat) {
+	auto const sep_idx = s.find(pat);
+	auto const first_half = s.substr(0, sep_idx);
+	s.remove_prefix(std::min(first_half.size()+1, s.size()));
+
+	return {first_half, s};
+}
+
+
+
 

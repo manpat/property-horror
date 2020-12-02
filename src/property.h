@@ -16,8 +16,8 @@
 namespace property {
 
 
-	using StructID = std::uint32_t;
-	using FieldID = std::uint32_t;
+	using StructId = std::uint32_t;
+	using FieldIdx = std::uint32_t;
 
 
 	enum class TypeId : std::uint32_t {
@@ -25,6 +25,7 @@ namespace property {
 		Float,
 		String,
 		CustomBase,
+		// TODO: it would be useful to encode struct/arrayness
 	};
 
 	namespace internal {
@@ -81,7 +82,7 @@ namespace property {
 
 
 	struct FieldDef {
-		FieldID id;
+		FieldIdx idx;
 		std::string name;
 		std::string display_name;
 		std::string description;
@@ -89,11 +90,11 @@ namespace property {
 	};
 
 	struct StructDef {
-		StructID id;
+		StructId id;
 		std::string name;
 		std::size_t size;
 
-		std::vector<FieldID> fields;
+		std::vector<FieldDef> fields;
 	};
 
 	template<class S>
@@ -109,18 +110,19 @@ namespace property {
 
 	struct Kernel {
 		std::deque<StructDef> structs;
-		std::deque<FieldDef> fields;
-		std::unordered_map<TypeId, StructID> type_id_to_struct;
+		std::unordered_map<TypeId, StructId> type_id_to_struct;
 
-		static std::atomic<StructID> s_property_struct_alloc;
+		static std::atomic<StructId> s_property_struct_alloc;
 
 		template<class S>
-		static auto get_struct_id() -> StructID;
+		static auto get_struct_id() -> StructId;
 
 		template<class S>
 		auto struct_def_for() const -> StructDef const*;
 
-		auto struct_def_for(StructID) const -> StructDef const*;
+		auto struct_def_for(StructId) const -> StructDef const*;
+
+		auto struct_id_from_type_id(TypeId) const -> std::optional<StructId>;
 
 		template<StandardLayout S>
 		auto register_struct(std::string name) -> StructBuilder<S>;
@@ -130,91 +132,27 @@ namespace property {
 
 
 	struct FieldRef {
-		StructID struct_id;
-		FieldID field_id;
+		StructId struct_id;
+		FieldDef const* field_def;
 		std::byte const* field_ptr;
 	};
 
 	struct StructRef {
-		StructID struct_id;
+		StructId struct_id;
 		std::byte const* struct_ptr;
 	};
 
-	template<class S>
-	auto type_erase_struct(S const* s) -> StructRef {
-		return StructRef {
-			Kernel::get_struct_id<S>(),
-			reinterpret_cast<std::byte const*>(s),
-		};
-	}
 
+	template<class S>
+	auto type_erase_struct(S const* s) -> StructRef;
 
 
 	void inspect(Kernel const& kernel, StructRef struct_ref);
+	void inspect(Kernel const& kernel, FieldRef field_ref);
 
-	// std::optional<FieldRef> lookup_field(Kernel const& kernel, StructRef struct_ref, std::string_view field);
-
-
-
-
-	template<class S>
-	auto Kernel::get_struct_id() -> StructID {
-		static StructID s_struct_id = ++s_property_struct_alloc;
-		return s_struct_id;
-	}
-
-	template<class S>
-	auto Kernel::struct_def_for() const -> StructDef const* {
-		return this->struct_def_for(Kernel::get_struct_id<S>());
-	}
-
-	inline auto Kernel::struct_def_for(StructID id) const -> StructDef const* {
-		auto it = std::find_if(
-			this->structs.begin(), this->structs.end(),
-			[id] (auto&& def) { return def.id == id; }
-		);
-
-		if (it != this->structs.end()) {
-			return &*it;
-		} else {
-			return nullptr;
-		}
-	}
-
-	template<StandardLayout S>
-	auto Kernel::register_struct(std::string name) -> StructBuilder<S> {
-		auto const struct_id = Kernel::get_struct_id<S>();
-
-		this->structs.push_back(StructDef {
-			struct_id,
-			std::move(name),
-			sizeof(S),
-			{}
-		});
-
-		this->type_id_to_struct.insert({type_id<S>(), struct_id});
-
-		return StructBuilder<S> {
-			this,
-			&this->structs.back()
-		};
-	}
-
-	template<class S>
-	template<class T>
-	void StructBuilder<S>::add_field(T S::* field, std::string name, std::string display_name, std::string description) {
-		FieldID const field_id = this->kernel->fields.size();
-
-		this->kernel->fields.push_back(FieldDef {
-			field_id,
-			std::move(name),
-			std::move(display_name),
-			std::move(description),
-
-			property_field_type_info(field),
-		});
-
-		this->struct_def->fields.push_back(field_id);
-	}
+	std::optional<FieldRef> resolve_field_path(Kernel const& kernel, StructRef struct_ref, std::string_view field_path);
 
 } // property
+
+
+#include "property.inl"

@@ -55,5 +55,13 @@ int main() {
 
 	property::StructRef foo_ref = property::type_erase_struct(&foo);
 	inspect(kernel, foo_ref);
+
+	fmt::print("\n--- property_search ---\n");
+
+	if (auto field_ref = resolve_field_path(kernel, foo_ref, "a_blah/meh")) {
+		inspect(kernel, *field_ref);
+	} else {
+		fmt::print("no :(\n");
+	}
 }
 
