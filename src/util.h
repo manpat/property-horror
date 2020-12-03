@@ -4,6 +4,7 @@
 #include <type_traits>
 #include <cstdint>
 #include <string>
+#include <new>
 #include <utility>
 #include <string_view>
 
@@ -13,6 +14,8 @@ template<class...>
 
 template<class S>
 concept StandardLayout = std::is_standard_layout_v<S>;
+template<class S>
+concept Enum = std::is_enum_v<S>;
 
 template <class From, class To>
 concept convertible_to =
@@ -22,12 +25,18 @@ concept convertible_to =
 	};
 
 
-template <StandardLayout S, typename T>
-constexpr uintptr_t member_offsetof(T S::* member) {
-	alignas(S) char container_space[sizeof(S)] = {};
-	auto const fake_container = reinterpret_cast<S const*>(container_space);
-	return reinterpret_cast<uintptr_t>(&(fake_container->*member)) - reinterpret_cast<uintptr_t>(fake_container);
-}
+// http://www.open-std.org/jtc1/sc22/wg21/docs/papers/2018/p0908r0.html :(
+// https://gist.github.com/graphitemaster/494f21190bb2c63c5516
+// template <StandardLayout S, typename T>
+// constexpr uintptr_t member_offsetof(T S::* member) {
+// 	alignas(S) char container_space[sizeof(S)] = {};
+// 	auto const fake_container = std::launder(reinterpret_cast<S const*>(container_space));
+// 	// despite std::launder I believe this is still UB
+// 	// for non-trivial types, fake_container isn't safe to access as it's lifetime doesn't begin until
+// 	// its initialisation completes [basic.life]. this is important bc unary operator& seems to require
+// 	// its target is a valid object [expr.unary.op] (how dare it) 
+// 	return reinterpret_cast<uintptr_t>(&(fake_container->*member)) - reinterpret_cast<uintptr_t>(fake_container);
+// }
 
 
 
