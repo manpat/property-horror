@@ -22,6 +22,8 @@ struct Foo {
 	int a_field;
 	Blah blah;
 	Wamp womp;
+
+	std::vector<int> list;
 };
 
 
@@ -73,6 +75,12 @@ struct property::AttributeCompatibleTrait<RangeAttribute<T>, T> : std::true_type
 
 
 
+template<class T>
+struct property::ListLikePropertyTrait<std::vector<T>> : std::true_type {};
+
+
+
+
 int main() {
 	property::Kernel kernel {};
 
@@ -82,6 +90,7 @@ int main() {
 		.add_attribute(RangeAttribute<int> {-3, 7});
 	struct_foo.add_field(&Foo::blah, "a_blah", "The Blah", "You know ;)");
 	struct_foo.add_field(&Foo::womp, "womp", "Some kinda thing", "Womp womp");
+	struct_foo.add_field(&Foo::list, "list", "List", "a collection of stuff");
 
 	auto struct_blah = register_struct<Blah>(kernel, "Blah");
 	auto field = struct_blah.add_field(&Blah::meh, "meh", "Meh", "Thingo the doohicky");
@@ -108,12 +117,12 @@ int main() {
 
 
 
-	Foo foo {"aaa", 123, Blah{5.0f}, Wamp::B};
+	Foo foo {"aaa", 123, Blah{5.0f}, Wamp::B, std::vector{1, 2, 3}};
 
 	property::StructRef foo_ref = property::type_erase_struct(kernel, &foo);
 	inspect(kernel, foo_ref);
 
-	fmt::print("\n--- property_search ---\n");
+	fmt::print("\n--- resolve_field_path ---\n");
 
 	if (auto field_ref = resolve_field_path(kernel, foo_ref, "a_blah/meh")) {
 
@@ -126,6 +135,21 @@ int main() {
 		}
 
 		inspect(kernel, *field_ref);
+
+		fmt::print("--- try_read ---\n");
+		if (auto value_ptr = field_ref->try_read<float>()) {
+			fmt::print("try_read<float>(): {}\n", *value_ptr);
+		} else {
+			fmt::print("try_read<float>(): nullptr\n");
+		}
+
+		if (auto value_ptr = field_ref->try_read<int>()) {
+			fmt::print("try_read<int>(): {}\n", *value_ptr);
+		} else {
+			fmt::print("try_read<int>(): nullptr\n");
+		}
+
+
 	} else {
 		fmt::print("no :(\n");
 	}

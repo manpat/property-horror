@@ -9,19 +9,13 @@ namespace property {
 	}
 
 
-	std::string FieldTypeInfo::format(std::byte const* field_ptr) const {
-		return get_base()->format(field_ptr);
+	std::byte* FieldTypeInfo::adjust_struct_ptr(std::byte* struct_ptr) const {
+		return const_cast<std::byte*>(get_base()->adjust_struct_ptr(struct_ptr));
 	}
 
 
-	template<class F>
-	F const* FieldTypeInfo::try_read(std::byte const* struct_ptr) {
-		if (this->type_id != property::type_id<F>()) {
-			return nullptr;
-		}
-
-		auto field_ptr = this->adjust_struct_ptr(struct_ptr);
-		return std::launder(reinterpret_cast<F const*>(field_ptr));
+	std::string FieldTypeInfo::format(std::byte const* field_ptr) const {
+		return get_base()->format(field_ptr);
 	}
 	
 

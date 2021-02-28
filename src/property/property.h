@@ -26,6 +26,13 @@ namespace property {
 	using EnumVariantIdx = std::uint32_t;
 
 
+	template<class Property> 
+	struct ListLikePropertyTrait : std::false_type {};
+
+	template<class Property>
+	concept ListLikeProperty = ListLikePropertyTrait<Property>::value;
+
+
 	namespace internal {
 		struct FieldTypeInfoErased {
 			virtual std::byte const* adjust_struct_ptr(std::byte const* struct_ptr) const = 0;
@@ -50,6 +57,25 @@ namespace property {
 				return fmt::format("{}", field_data);
 			}
 		};
+
+		template<class S, ListLikeProperty F>
+		struct FieldTypeInfoErasedImpl<S, F> final : FieldTypeInfoErased {
+			F S::* field_offset;
+
+			FieldTypeInfoErasedImpl(F S::* p) : field_offset{p} {}
+
+			std::byte const* adjust_struct_ptr(std::byte const* struct_ptr_raw) const final {
+				auto const struct_ptr = std::launder(reinterpret_cast<S const*>(struct_ptr_raw));
+				auto const field_ptr = &(struct_ptr->*field_offset);
+				return reinterpret_cast<std::byte const*>(field_ptr);
+			}
+
+			std::string format(std::byte const* /*field_ptr_raw*/) const final {
+				// auto const field_ptr = reinterpret_cast<F const*>(field_ptr_raw);
+				// auto const& field_data = *std::launder(field_ptr);
+				return fmt::format("<some list>");
+			}
+		};
 	}
 
 
@@ -59,16 +85,18 @@ namespace property {
 			: type_id {property::type_id<F>()}
 		{
 			static_assert(sizeof(internal::FieldTypeInfoErasedImpl<S, F>) <= sizeof(this->offset_storage));
+			static_assert(alignof(internal::FieldTypeInfoErasedImpl<S, F>) <= alignof(internal::FieldTypeInfoErased));
 			new (this->offset_storage) internal::FieldTypeInfoErasedImpl<S, F> {field};
 		}
 
 		std::byte const* adjust_struct_ptr(std::byte const* struct_ptr) const;
+		std::byte* adjust_struct_ptr(std::byte* struct_ptr) const;
 
 		// TODO: its kinda weird that this takes field_ptr but nothing else does?
 		std::string format(std::byte const* field_ptr) const;
 
 		template<class F>
-		F const* try_read(std::byte const* struct_ptr);
+		bool matches_type() const;
 
 	private:
 		alignas(internal::FieldTypeInfoErased)
@@ -82,6 +110,17 @@ namespace property {
 
 
 
+	struct ListFieldInfo {
+		TypeId element_type_id;
+
+		std::byte const* get_element_ptr(std::byte const* field_ptr, std::size_t) const;
+		std::size_t get_size(std::byte const* field_ptr) const;
+
+		// TODO: how to modify?
+	};
+
+
+
 	// Core types
 	struct FieldDef {
 		FieldIdx idx;
@@ -90,6 +129,7 @@ namespace property {
 		std::string description;
 		AttributeList attributes;
 		FieldTypeInfo field_info;
+		// TODO: std::optional<ListFieldInfo> list_info;
 	};
 
 	struct StructDef {
@@ -145,6 +185,11 @@ namespace property {
 		StructId struct_id;
 		FieldDef const* field_def;
 		std::byte const* field_ptr;
+
+
+		template<class F>
+		F const* try_read() const;
+
 
 		template<class A> 
 		bool has_attribute() const;

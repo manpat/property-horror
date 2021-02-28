@@ -19,6 +19,10 @@ namespace property {
 		template<class Property>
 		auto add_field(Property S::*, std::string name, std::string display_name, std::string description)
 			-> FieldBuilder<Property>;
+
+		template<ListLikeProperty Property>
+		auto add_field(Property S::*, std::string name, std::string display_name, std::string description)
+			-> FieldBuilder<Property>;
 	};
 
 	template<Enum S>

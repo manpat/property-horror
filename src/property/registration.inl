@@ -61,6 +61,29 @@ namespace property {
 		};
 	}
 
+	template<class S>
+	template<ListLikeProperty Property>
+	auto StructBuilder<S>::add_field(Property S::* field, std::string name, std::string display_name,
+		std::string description) -> FieldBuilder<Property>
+	{
+		FieldIdx const field_idx = this->struct_def->fields.size();
+
+		this->struct_def->fields.push_back(FieldDef {
+			field_idx,
+			std::move(name),
+			std::move(display_name),
+			std::move(description),
+
+			{},
+			FieldTypeInfo { field },
+		});
+
+		return FieldBuilder<Property> {
+			this->kernel,
+			&this->struct_def->fields.back(),
+		};
+	}
+
 
 	template<class Property>
 	template<AttributeCompatible<Property> A>
