@@ -1,5 +1,6 @@
-#include "util.h"
-#include "property.h"
+#include "property/util.h"
+#include "property/property.h"
+#include "property/registration.h"
 
 #include <fmt/core.h>
 #include <fmt/format.h>
@@ -75,14 +76,14 @@ struct property::AttributeCompatibleTrait<RangeAttribute<T>, T> : std::true_type
 int main() {
 	property::Kernel kernel {};
 
-	auto struct_foo = kernel.register_struct<Foo>("Foo");
+	auto struct_foo = register_struct<Foo>(kernel, "Foo");
 	struct_foo.add_field(&Foo::whatever, "whatever", "Whatever", "It's a whatever");
 	struct_foo.add_field(&Foo::a_field, "a_field", "A Field", "It's a field")
 		.add_attribute(RangeAttribute<int> {-3, 7});
 	struct_foo.add_field(&Foo::blah, "a_blah", "The Blah", "You know ;)");
 	struct_foo.add_field(&Foo::womp, "womp", "Some kinda thing", "Womp womp");
 
-	auto struct_blah = kernel.register_struct<Blah>("Blah");
+	auto struct_blah = register_struct<Blah>(kernel, "Blah");
 	auto field = struct_blah.add_field(&Blah::meh, "meh", "Meh", "Thingo the doohicky");
 	field.add_attribute(HiddenAttribute {});
 	field.add_attribute(RangeAttribute<float> {1.0f, 4.0f});
@@ -100,7 +101,7 @@ int main() {
 
 	// field_def.get_attribute<FilepathAttribute>();
 
-	auto enum_wamp = kernel.register_enum<Wamp>("Wamp");
+	auto enum_wamp = register_enum<Wamp>(kernel, "Wamp");
 	enum_wamp.add_variant(Wamp::A, "A");
 	enum_wamp.add_variant(Wamp::B, "B");
 	enum_wamp.add_variant(Wamp::C, "C");

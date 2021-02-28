@@ -1,7 +1,7 @@
 #pragma once
 
-#include "type_id.h"
-#include "util.h"
+#include "property/type_id.h"
+#include "property/util.h"
 
 #include <vector>
 #include <memory>

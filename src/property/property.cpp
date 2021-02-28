@@ -1,31 +1,35 @@
-#include "property.h"
+#include "property/property.h"
 
 #include <fmt/core.h>
 
 namespace property {
 
-	std::atomic<StructId> Kernel::s_registered_type_id_alloc {};
-
-
-	static std::atomic<std::uint32_t> s_type_id_alloc { std::uint32_t(TypeId::CustomBase)-1 };
-
-	TypeId internal::new_custom_type_id() {
-		return TypeId{++s_type_id_alloc};
+	std::byte const* FieldTypeInfo::adjust_struct_ptr(std::byte const* struct_ptr) const {
+		return get_base()->adjust_struct_ptr(struct_ptr);
 	}
 
 
-	std::string format_debug(TypeId id) {
-		switch(id) {
-			case TypeId::Int: return "Int";
-			case TypeId::Float: return "Float";
-			case TypeId::String: return "String";
-			default:
-				return fmt::format(
-					"Custom({})",
-					std::uint32_t(id) - std::uint32_t(TypeId::CustomBase)
-				);
+	std::string FieldTypeInfo::format(std::byte const* field_ptr) const {
+		return get_base()->format(field_ptr);
+	}
+
+
+	template<class F>
+	F const* FieldTypeInfo::try_read(std::byte const* struct_ptr) {
+		if (this->type_id != property::type_id<F>()) {
+			return nullptr;
 		}
+
+		auto field_ptr = this->adjust_struct_ptr(struct_ptr);
+		return std::launder(reinterpret_cast<F const*>(field_ptr));
 	}
+	
+
+	internal::FieldTypeInfoErased const* FieldTypeInfo::get_base() const {
+		return std::launder(reinterpret_cast<internal::FieldTypeInfoErased const*>(this->offset_storage));
+	}
+
+
 
 	auto Kernel::struct_def_for(StructId id) const -> StructDef const* {
 		auto it = std::find_if(
@@ -34,19 +38,6 @@ namespace property {
 		);
 
 		if (it != this->structs.end()) {
-			return &*it;
-		} else {
-			return nullptr;
-		}
-	}
-
-	auto Kernel::enum_def_for(EnumId id) const -> EnumDef const* {
-		auto it = std::find_if(
-			this->enums.begin(), this->enums.end(),
-			[id] (auto&& def) { return def.id == id; }
-		);
-
-		if (it != this->enums.end()) {
 			return &*it;
 		} else {
 			return nullptr;
@@ -62,6 +53,22 @@ namespace property {
 			return std::nullopt;
 		}
 	}
+
+
+	auto Kernel::enum_def_for(EnumId id) const -> EnumDef const* {
+		auto it = std::find_if(
+			this->enums.begin(), this->enums.end(),
+			[id] (auto&& def) { return def.id == id; }
+		);
+
+		if (it != this->enums.end()) {
+			return &*it;
+		} else {
+			return nullptr;
+		}
+	}
+
+
 	auto Kernel::enum_id_from_type_id(TypeId id) const -> std::optional<EnumId> {
 		auto enum_id_it = this->type_id_to_enum.find(id);
 		if (enum_id_it != this->type_id_to_enum.end()) {
@@ -70,6 +77,8 @@ namespace property {
 			return std::nullopt;
 		}
 	}
+
+
 
 	static void inspect_impl(Kernel const& kernel, StructRef struct_ref, int indent);
 
@@ -133,7 +142,7 @@ namespace property {
 
 
 
-
+	// TODO: does this need to take a StructRef? could this instead take a StructDef?
 	std::optional<FieldRef> resolve_field_path(Kernel const& kernel, StructRef struct_ref, std::string_view field_path) {
 		if (field_path.empty()) {
 			return std::nullopt;

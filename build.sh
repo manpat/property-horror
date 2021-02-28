@@ -5,7 +5,7 @@ set -euo pipefail
 src_dir="src"
 build_dir="output"
 
-flags="-std=c++20 -Wall -Wextra -pedantic "
+flags="-std=c++20 -Wall -Wextra -pedantic -Isrc "
 flags+="$(pkg-config --cflags fmt)"
 
 link_libs="$(pkg-config --libs --static fmt)"
@@ -43,7 +43,8 @@ function cmd_build {
 	mkdir -p $build_dir
 
 	compile_source main.cpp
-	compile_source property.cpp
+	compile_source property/property.cpp
+	compile_source property/type_id.cpp
 	link $object_files -ooutput/build
 }
 
